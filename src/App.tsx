@@ -5,7 +5,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Minus, ShoppingBag, UtensilsCrossed, ChevronRight, X, Scan, QrCode, ArrowRight, User, Phone, MessageSquare } from 'lucide-react';
+import { Plus, Minus, ShoppingBag, UtensilsCrossed, ChevronRight, X, Scan, QrCode, ArrowRight, User, Phone, MessageSquare, CreditCard, Smartphone, Lock, CheckCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 interface FoodItem {
@@ -69,6 +69,9 @@ export default function App() {
   const [customerData, setCustomerData] = useState({ fullName: '', mobileNumber: '' });
   const [cart, setCart] = useState<Record<string, number>>({});
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card'>('upi');
+  const [orderPlaced, setOrderPlaced] = useState(false);
 
   // Check for table parameter on mount
   useEffect(() => {
@@ -463,27 +466,8 @@ export default function App() {
 
                 <button 
                   onClick={() => {
-                    const orderDetails = MENU_ITEMS
-                      .filter(item => cart[item.id])
-                      .map(item => `${item.name} x ${cart[item.id]} = ₹${item.price * cart[item.id]}`)
-                      .join('\n');
-                    
-                    const message = `*QuickBite Order Confirmation*\n\n` +
-                      `*Customer:* ${customerData.fullName}\n` +
-                      `*Mobile:* ${customerData.mobileNumber}\n` +
-                      `*Table:* No. 12\n\n` +
-                      `*Items:*\n${orderDetails}\n\n` +
-                      `*Subtotal:* ₹${totals.subtotal.toFixed(2)}\n` +
-                      `*GST (18%):* ₹${totals.gst.toFixed(2)}\n` +
-                      `*Grand Total:* ₹${totals.total.toFixed(2)}\n\n` +
-                      `Thank you for ordering with QuickBite!`;
-
-                    const whatsappUrl = `https://wa.me/${customerData.mobileNumber.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-                    window.open(whatsappUrl, '_blank');
-
-                    alert('Order placed successfully! Redirecting to WhatsApp for confirmation.');
-                    setCart({});
                     setShowCheckout(false);
+                    setShowPayment(true);
                   }}
                   className="w-full bg-[#5A5A40] text-white py-6 rounded-[24px] font-bold text-xl mt-10 shadow-2xl shadow-[#5A5A40]/30 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                 >
@@ -499,6 +483,202 @@ export default function App() {
           </>
         )}
       </AnimatePresence>
+      {/* Payment Gateway Modal */}
+      <AnimatePresence>
+        {showPayment && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPayment(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-md z-50"
+            />
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[48px] z-[60] p-10 max-h-[90vh] overflow-y-auto shadow-2xl"
+            >
+              <div className="max-w-2xl mx-auto">
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-serif font-bold">Payment Gateway</h2>
+                  <button onClick={() => setShowPayment(false)} className="p-2 bg-[#F5F5F0] rounded-full">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="bg-[#FDFCFB] p-6 rounded-3xl border border-[#F5F5F0] mb-8 flex justify-between items-center">
+                  <div>
+                    <p className="text-xs text-[#666] uppercase tracking-widest font-bold">Amount to Pay</p>
+                    <p className="text-3xl font-mono font-black">₹{totals.total.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-[#5A5A40]/10 p-3 rounded-2xl text-[#5A5A40]">
+                    <Lock size={24} />
+                  </div>
+                </div>
+
+                {/* Payment Tabs */}
+                <div className="flex gap-2 mb-8 bg-[#F5F5F0] p-1.5 rounded-2xl">
+                  <button 
+                    onClick={() => setPaymentMethod('upi')}
+                    className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${paymentMethod === 'upi' ? 'bg-white shadow-sm text-[#1A1A1A]' : 'text-[#666]'}`}
+                  >
+                    <Smartphone size={18} />
+                    UPI
+                  </button>
+                  <button 
+                    onClick={() => setPaymentMethod('card')}
+                    className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${paymentMethod === 'card' ? 'bg-white shadow-sm text-[#1A1A1A]' : 'text-[#666]'}`}
+                  >
+                    <CreditCard size={18} />
+                    Card
+                  </button>
+                </div>
+
+                {paymentMethod === 'upi' ? (
+                  <div className="space-y-4">
+                    <p className="text-sm font-medium text-[#666] mb-4">Select your UPI App</p>
+                    <div className="grid grid-cols-3 gap-4">
+                      {['Google Pay', 'PhonePe', 'Paytm'].map((app) => (
+                        <button 
+                          key={app}
+                          onClick={() => {
+                            // Simulate UPI deep link
+                            const upiUrl = `upi://pay?pa=merchant@upi&pn=QuickBite&am=${totals.total}&cu=INR`;
+                            window.location.href = upiUrl;
+                            
+                            // For demo purposes, we'll just simulate success after a delay
+                            setTimeout(() => handlePaymentSuccess(), 2000);
+                          }}
+                          className="flex flex-col items-center gap-3 p-4 bg-[#FDFCFB] border border-[#E5E5E5] rounded-3xl hover:border-[#5A5A40] transition-all group"
+                        >
+                          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-all">
+                            <Smartphone className="text-[#5A5A40]" />
+                          </div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider">{app}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-8 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex gap-3">
+                      <div className="text-blue-500"><Smartphone size={20} /></div>
+                      <p className="text-xs text-blue-700 leading-relaxed">
+                        You will be redirected to your selected UPI app to complete the payment securely.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest font-bold text-[#999] ml-1">Card Number</label>
+                      <div className="relative">
+                        <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-[#999]" size={18} />
+                        <input 
+                          type="text"
+                          placeholder="0000 0000 0000 0000"
+                          className="w-full bg-[#FDFCFB] border border-[#E5E5E5] rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-[#5A5A40] transition-colors font-mono"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] uppercase tracking-widest font-bold text-[#999] ml-1">Expiry Date</label>
+                        <input 
+                          type="text"
+                          placeholder="MM/YY"
+                          className="w-full bg-[#FDFCFB] border border-[#E5E5E5] rounded-2xl py-4 px-4 focus:outline-none focus:border-[#5A5A40] transition-colors font-mono"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] uppercase tracking-widest font-bold text-[#999] ml-1">CVV</label>
+                        <input 
+                          type="password"
+                          placeholder="***"
+                          className="w-full bg-[#FDFCFB] border border-[#E5E5E5] rounded-2xl py-4 px-4 focus:outline-none focus:border-[#5A5A40] transition-colors font-mono"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase tracking-widest font-bold text-[#999] ml-1">Card Holder Name</label>
+                      <input 
+                        type="text"
+                        placeholder="Full Name"
+                        className="w-full bg-[#FDFCFB] border border-[#E5E5E5] rounded-2xl py-4 px-4 focus:outline-none focus:border-[#5A5A40] transition-colors"
+                      />
+                    </div>
+                    <button 
+                      onClick={() => handlePaymentSuccess()}
+                      className="w-full bg-[#1A1A1A] text-white py-5 rounded-[24px] font-bold text-lg flex items-center justify-center gap-3 hover:bg-[#333] transition-all shadow-xl shadow-black/10 active:scale-95"
+                    >
+                      Pay ₹{totals.total.toFixed(2)}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Success Modal */}
+      <AnimatePresence>
+        {orderPlaced && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+            />
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="relative bg-white rounded-[48px] p-12 text-center max-w-sm w-full shadow-2xl"
+            >
+              <div className="bg-green-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8">
+                <CheckCircle size={48} className="text-green-600" />
+              </div>
+              <h2 className="text-3xl font-serif font-bold mb-4">Order Placed!</h2>
+              <p className="text-[#666] mb-8 leading-relaxed">
+                Your payment was successful. We've sent the order details to your WhatsApp.
+              </p>
+              <button 
+                onClick={() => {
+                  setOrderPlaced(false);
+                  setCart({});
+                  setStep('qr');
+                }}
+                className="w-full bg-[#1A1A1A] text-white py-5 rounded-[24px] font-bold text-lg hover:bg-[#333] transition-all"
+              >
+                Back to Home
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
+
+  function handlePaymentSuccess() {
+    const orderDetails = MENU_ITEMS
+      .filter(item => cart[item.id])
+      .map(item => `${item.name} x ${cart[item.id]} = ₹${item.price * cart[item.id]}`)
+      .join('\n');
+    
+    const message = `*QuickBite Order Confirmation*\n\n` +
+      `*Customer:* ${customerData.fullName}\n` +
+      `*Mobile:* ${customerData.mobileNumber}\n` +
+      `*Table:* No. 12\n\n` +
+      `*Items:*\n${orderDetails}\n\n` +
+      `*Subtotal:* ₹${totals.subtotal.toFixed(2)}\n` +
+      `*GST (18%):* ₹${totals.gst.toFixed(2)}\n` +
+      `*Grand Total:* ₹${totals.total.toFixed(2)}\n\n` +
+      `Thank you for ordering with QuickBite!`;
+
+    const whatsappUrl = `https://wa.me/${customerData.mobileNumber.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+
+    setShowPayment(false);
+    setOrderPlaced(true);
+  }
 }
