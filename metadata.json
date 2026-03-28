@@ -1,0 +1,5 @@
+{
+  "name": "QuickBite Digital Menu",
+  "description": "A modern, QR-scannable digital menu for restaurants with real-time total and GST calculation.",
+  "requestFramePermissions": []
+}
