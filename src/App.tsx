@@ -5,7 +5,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Minus, ShoppingBag, UtensilsCrossed, ChevronRight, X, Scan, QrCode, ArrowRight } from 'lucide-react';
+import { Plus, Minus, ShoppingBag, UtensilsCrossed, ChevronRight, X, Scan, QrCode, ArrowRight, User, Phone, MessageSquare } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 interface FoodItem {
@@ -62,10 +62,11 @@ const MENU_ITEMS: FoodItem[] = [
 
 const GST_RATE = 0.18;
 
-type AppStep = 'qr' | 'scanning' | 'menu';
+type AppStep = 'qr' | 'scanning' | 'customer_info' | 'menu';
 
 export default function App() {
   const [step, setStep] = useState<AppStep>('qr');
+  const [customerData, setCustomerData] = useState({ fullName: '', mobileNumber: '' });
   const [cart, setCart] = useState<Record<string, number>>({});
   const [showCheckout, setShowCheckout] = useState(false);
 
@@ -73,7 +74,7 @@ export default function App() {
   useEffect(() => {
     if (step === 'scanning') {
       const timer = setTimeout(() => {
-        setStep('menu');
+        setStep('customer_info');
       }, 2000);
       return () => clearTimeout(timer);
     }
@@ -191,6 +192,75 @@ export default function App() {
               />
             ))}
           </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Customer Info Step
+  if (step === 'customer_info') {
+    return (
+      <div className="min-h-screen bg-[#FDFCFB] flex flex-col items-center justify-center p-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-md w-full bg-white p-10 rounded-[40px] shadow-2xl border border-[#F5F5F0]"
+        >
+          <div className="mb-8 text-center">
+            <div className="bg-[#F5F5F0] w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <User size={32} className="text-[#5A5A40]" />
+            </div>
+            <h2 className="text-3xl font-serif font-bold mb-2">Almost there!</h2>
+            <p className="text-[#666] text-sm">Please provide your details to access the menu.</p>
+          </div>
+
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (customerData.fullName && customerData.mobileNumber) {
+                setStep('menu');
+              }
+            }}
+            className="space-y-6"
+          >
+            <div className="space-y-2">
+              <label className="text-xs uppercase tracking-widest font-bold text-[#999] ml-1">Full Name</label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-[#999]" size={18} />
+                <input 
+                  required
+                  type="text"
+                  placeholder="Enter your name"
+                  value={customerData.fullName}
+                  onChange={(e) => setCustomerData(prev => ({ ...prev, fullName: e.target.value }))}
+                  className="w-full bg-[#FDFCFB] border border-[#E5E5E5] rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-[#5A5A40] transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs uppercase tracking-widest font-bold text-[#999] ml-1">Mobile Number</label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-[#999]" size={18} />
+                <input 
+                  required
+                  type="tel"
+                  placeholder="Enter mobile number"
+                  value={customerData.mobileNumber}
+                  onChange={(e) => setCustomerData(prev => ({ ...prev, mobileNumber: e.target.value }))}
+                  className="w-full bg-[#FDFCFB] border border-[#E5E5E5] rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-[#5A5A40] transition-colors"
+                />
+              </div>
+            </div>
+
+            <button 
+              type="submit"
+              className="w-full bg-[#1A1A1A] text-white py-5 rounded-[24px] font-bold text-lg flex items-center justify-center gap-3 hover:bg-[#333] transition-all shadow-xl shadow-black/10 active:scale-95 mt-4"
+            >
+              Continue to Menu
+              <ArrowRight size={20} />
+            </button>
+          </form>
         </motion.div>
       </div>
     );
@@ -385,12 +455,31 @@ export default function App() {
 
                 <button 
                   onClick={() => {
-                    alert('Order placed successfully! Your food is being prepared.');
+                    const orderDetails = MENU_ITEMS
+                      .filter(item => cart[item.id])
+                      .map(item => `${item.name} x ${cart[item.id]} = ₹${item.price * cart[item.id]}`)
+                      .join('\n');
+                    
+                    const message = `*QuickBite Order Confirmation*\n\n` +
+                      `*Customer:* ${customerData.fullName}\n` +
+                      `*Mobile:* ${customerData.mobileNumber}\n` +
+                      `*Table:* No. 12\n\n` +
+                      `*Items:*\n${orderDetails}\n\n` +
+                      `*Subtotal:* ₹${totals.subtotal.toFixed(2)}\n` +
+                      `*GST (18%):* ₹${totals.gst.toFixed(2)}\n` +
+                      `*Grand Total:* ₹${totals.total.toFixed(2)}\n\n` +
+                      `Thank you for ordering with QuickBite!`;
+
+                    const whatsappUrl = `https://wa.me/${customerData.mobileNumber.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+                    window.open(whatsappUrl, '_blank');
+
+                    alert('Order placed successfully! Redirecting to WhatsApp for confirmation.');
                     setCart({});
                     setShowCheckout(false);
                   }}
-                  className="w-full bg-[#5A5A40] text-white py-6 rounded-[24px] font-bold text-xl mt-10 shadow-2xl shadow-[#5A5A40]/30 hover:scale-[1.01] active:scale-[0.98] transition-all"
+                  className="w-full bg-[#5A5A40] text-white py-6 rounded-[24px] font-bold text-xl mt-10 shadow-2xl shadow-[#5A5A40]/30 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                 >
+                  <MessageSquare size={24} />
                   Confirm & Place Order
                 </button>
                 
