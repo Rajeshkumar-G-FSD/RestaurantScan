@@ -70,6 +70,14 @@ export default function App() {
   const [cart, setCart] = useState<Record<string, number>>({});
   const [showCheckout, setShowCheckout] = useState(false);
 
+  // Check for table parameter on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('table')) {
+      setStep('customer_info');
+    }
+  }, []);
+
   // Simulate scanning process
   useEffect(() => {
     if (step === 'scanning') {
@@ -125,7 +133,7 @@ export default function App() {
             <div className="absolute -inset-4 bg-[#5A5A40]/5 rounded-[40px] blur-xl group-hover:bg-[#5A5A40]/10 transition-all duration-500"></div>
             <div className="relative bg-white p-8 rounded-[40px] shadow-2xl border border-[#F5F5F0]">
               <QRCodeSVG 
-                value={window.location.href} 
+                value={`${window.location.origin}${window.location.pathname}?table=12`} 
                 size={200}
                 fgColor="#1A1A1A"
                 level="H"
